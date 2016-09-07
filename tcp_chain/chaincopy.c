@@ -15,10 +15,12 @@
 	#define TCP_QUICKACK 12
 #endif
 
-char buf[4096];
-char *ptr = buf;
+#define FILESIZE 200
+#define PAYLOAD 64
 
-#define PAYLOAD 1024
+char buf[FILESIZE];
+char *rbuf = buf;
+char *wbuf = buf;
 
 void error(const char *msg)
 {
@@ -26,28 +28,28 @@ void error(const char *msg)
     	exit(0);
 }
 
-void write_all(int wsock) {
+void write_all(int wsock, int payload) {
 	int byte, cnt = 0;
 
-	while (cnt < PAYLOAD) {
-                byte = write(wsock, buf + cnt, PAYLOAD - cnt);
+	while (cnt < payload) {
+                byte = write(wsock, wbuf + cnt, payload - cnt);
              	if ( byte < 0 )
                          error("ERROR writing to socket");
                 cnt += byte;
 	}
-	ptr += PAYLOAD;
+	wbuf += payload;
 }
 
-void read_all(int rsock) {
+void read_all(int rsock, int payload) {
 	int byte, cnt = 0;
 	//setsockopt(rsock, IPPROTO_TCP, TCP_QUICKACK, (int[]){1}, sizeof(int));
-        while (cnt < PAYLOAD) {
-        	byte = read(rsock, buf + cnt, PAYLOAD - cnt);
+        while (cnt < payload) {
+        	byte = read(rsock, rbuf + cnt, payload - cnt);
         	if ( byte < 0 )
         		error("ERROR reading from socket");
         	cnt += byte;
         }
-	ptr += PAYLOAD;
+	rbuf += payload;
 }
 
 int setupsender(struct hostent *server, int portno)
@@ -115,12 +117,13 @@ int setuprecver(int *listensock, int portno)
 
 void starts(int rsock, int wsock)
 {
-	int cnt = 0;
+	int payload, cnt = 0;
 
-	while (cnt < 4096) {
-		read_all(rsock);
-		write_all(wsock);
-		cnt += PAYLOAD;
+	while (cnt < FILESIZE) {
+		payload = FILESIZE >= cnt -payload ? PAYLOAD : cnt - payload;
+		read_all(rsock, payload);
+		write_all(wsock, payload);
+		cnt += payload;
 		//if( tmp[0] == 0x7b)
 		//	break;
 	}
@@ -129,19 +132,21 @@ void starts(int rsock, int wsock)
 void startc(int rsock, int wsock)
 {
 	struct timespec ts0, ts1;
-	int cnt = 0;
+	int payload, cnt = 0;
 	
-	for(int i=0; i< 4096; i++) 
+	for(int i=0; i< 256; i++) 
 		buf[i] = (char)(i%26+97);
 
-	while (cnt < 4096) {
+	while (cnt < FILESIZE) {
 
 		//memset(tmp, 0, size);
 
 		//clock_gettime(CLOCK_REALTIME, &ts0);
-		write_all(wsock);
-		read_all(rsock);
-		cnt += PAYLOAD;
+		payload = PAYLOAD >= FILESIZE - cnt ? PAYLOAD : FILESIZE - cnt;
+		printf("pl %d\n", payload);
+		write_all(wsock, payload);
+		read_all(rsock, payload);
+		cnt += payload;
 		//clock_gettime(CLOCK_REALTIME, &ts1);
 		//long diff = ts1.tv_nsec - ts0.tv_nsec;
 		//rec[i] = diff > 0 ? diff : 1000000000 + diff; 
@@ -155,6 +160,9 @@ void startc(int rsock, int wsock)
 
 		//print_report_lat(all, t, rec);
 	}
+		for(int i = 0; i<256; i++)
+                	printf("%d %c", i, buf[i]);
+        	printf("\n");
 }
 
 int main(int argc, char *argv[])

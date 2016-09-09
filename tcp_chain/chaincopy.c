@@ -15,7 +15,7 @@
 	#define TCP_QUICKACK 12
 #endif
 
-#define FILESIZE 200
+#define FILESIZE 1425
 #define PAYLOAD 64
 
 char buf[FILESIZE];
@@ -117,6 +117,7 @@ int setuprecver(int *listensock, int portno)
 
 void starts(int rsock, int wsock)
 {
+	FILE *f;
 	int payload, cnt = 0;
 
 	while (cnt < FILESIZE) {
@@ -124,18 +125,30 @@ void starts(int rsock, int wsock)
 		read_all(rsock, payload);
 		write_all(wsock, payload);
 		cnt += payload;
-		//if( tmp[0] == 0x7b)
-		//	break;
 	}
+
+	f = fopen("doc2", "wb");
+        if(fwrite(buf, FILESIZE ,1,f)) {
+                fclose(f);
+                error("write file");
+        }
+        fclose(f);
 }
 
 void startc(int rsock, int wsock)
 {
+	FILE *f;
 	struct timespec ts0, ts1;
 	int payload, cnt = 0;
-	
-	for(int i=0; i< 256; i++) 
-		buf[i] = (char)(i%26+97);
+
+	f = fopen("doc", "rb");
+	if(!f)
+		error("doc");
+	if(fread(buf ,FILESIZE, 1, f) != 1) {
+		fclose(f);
+		error("read doc");
+	}
+	fclose(f);
 
 	while (cnt < FILESIZE) {
 
@@ -160,26 +173,20 @@ void startc(int rsock, int wsock)
 
 		//print_report_lat(all, t, rec);
 	}
-		for(int i = 0; i<256; i++)
-                	printf("%d %c", i, buf[i]);
-        	printf("\n");
 }
 
-int main(int argc, char *argv[])
-{
-        if(argc < 4)
-        {
+int main(int argc, char *argv[]) {
+        if(argc < 4) {
                 fprintf(stderr,"usage %s <hostname> <-c/-s> <-p#>\n", argv[0]);
                 exit(0);
         }
-
+	
         int readsock, writesock, listensock;
 	struct hostent *server = gethostbyname(argv[1]);
         char role = *(argv[2]+1);
 	int portno = atoi(argv[3]+2);
 
-        switch(role)
-        {
+        switch(role) {
         case 'c':		
                 writesock = setupsender( server, portno );
                 readsock = setuprecver( &listensock, portno );
@@ -188,10 +195,6 @@ int main(int argc, char *argv[])
 		startc( readsock, writesock);
                 break;
         case 's':
-		close(listensock);
-		close(readsock);
-		close(writesock);
-			
                 readsock = setuprecver( &listensock, portno );
                 writesock = setupsender( server, portno );
 		starts( readsock, writesock);

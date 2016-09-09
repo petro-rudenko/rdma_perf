@@ -15,8 +15,8 @@
 	#define TCP_QUICKACK 12
 #endif
 
-#define FILESIZE 1425
-#define PAYLOAD 64
+#define FILESIZE 1611071488 
+#define PAYLOAD 1024
 
 char buf[FILESIZE];
 char *rbuf = buf;
@@ -42,7 +42,7 @@ void write_all(int wsock, int payload) {
 
 void read_all(int rsock, int payload) {
 	int byte, cnt = 0;
-	//setsockopt(rsock, IPPROTO_TCP, TCP_QUICKACK, (int[]){1}, sizeof(int));
+	setsockopt(rsock, IPPROTO_TCP, TCP_QUICKACK, (int[]){1}, sizeof(int));
         while (cnt < payload) {
         	byte = read(rsock, rbuf + cnt, payload - cnt);
         	if ( byte < 0 )
@@ -121,14 +121,14 @@ void starts(int rsock, int wsock)
 	int payload, cnt = 0;
 
 	while (cnt < FILESIZE) {
-		payload = FILESIZE >= cnt -payload ? PAYLOAD : cnt - payload;
+		payload = PAYLOAD < FILESIZE - cnt ? PAYLOAD : FILESIZE - cnt;
 		read_all(rsock, payload);
 		write_all(wsock, payload);
 		cnt += payload;
 	}
 
 	f = fopen("doc2", "wb");
-        if(fwrite(buf, FILESIZE ,1,f)) {
+        if(fwrite(buf, FILESIZE ,1,f) != 1) {
                 fclose(f);
                 error("write file");
         }
@@ -141,9 +141,9 @@ void startc(int rsock, int wsock)
 	struct timespec ts0, ts1;
 	int payload, cnt = 0;
 
-	f = fopen("doc", "rb");
+	f = fopen("graphic.pdf", "rb");
 	if(!f)
-		error("doc");
+		error("graphic.pdf");
 	if(fread(buf ,FILESIZE, 1, f) != 1) {
 		fclose(f);
 		error("read doc");
@@ -155,8 +155,7 @@ void startc(int rsock, int wsock)
 		//memset(tmp, 0, size);
 
 		//clock_gettime(CLOCK_REALTIME, &ts0);
-		payload = PAYLOAD >= FILESIZE - cnt ? PAYLOAD : FILESIZE - cnt;
-		printf("pl %d\n", payload);
+		payload = PAYLOAD < FILESIZE - cnt ? PAYLOAD : FILESIZE - cnt;
 		write_all(wsock, payload);
 		read_all(rsock, payload);
 		cnt += payload;
@@ -173,6 +172,7 @@ void startc(int rsock, int wsock)
 
 		//print_report_lat(all, t, rec);
 	}
+	
 }
 
 int main(int argc, char *argv[]) {

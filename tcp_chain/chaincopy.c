@@ -15,8 +15,8 @@
 	#define TCP_QUICKACK 12
 #endif
 
-#define FILESIZE 1611071488 
-#define PAYLOAD 1024
+#define FILESIZE 102784090  
+#define PAYLOAD 1448*10
 
 char buf[FILESIZE];
 char *rbuf = buf;
@@ -115,24 +115,33 @@ int setuprecver(int *listensock, int portno)
 	return readsock;
 }
 
-void starts(int rsock, int wsock)
+void starts(int rsock, int wsock, int last)
 {
 	FILE *f;
 	int payload, cnt = 0;
 
-	while (cnt < FILESIZE) {
-		payload = PAYLOAD < FILESIZE - cnt ? PAYLOAD : FILESIZE - cnt;
-		read_all(rsock, payload);
-		write_all(wsock, payload);
-		cnt += payload;
-	}
+	for(int i=0; i<30; i++) {
+		cnt = 0; wbuf = buf; rbuf = buf;
+		while (cnt < FILESIZE) {
+			payload = PAYLOAD < FILESIZE - cnt ? PAYLOAD : FILESIZE - cnt;
+			read_all(rsock, payload);
 
+			if(!last)
+				write_all(wsock, payload);
+
+			cnt += payload;
+		}
+		if(i%5 == 0)
+			printf("%d\n", i);
+	}
+	/**
 	f = fopen("doc2", "wb");
         if(fwrite(buf, FILESIZE ,1,f) != 1) {
                 fclose(f);
                 error("write file");
         }
         fclose(f);
+	**/
 }
 
 void startc(int rsock, int wsock)
@@ -140,6 +149,7 @@ void startc(int rsock, int wsock)
 	FILE *f;
 	struct timespec ts0, ts1;
 	int payload, cnt = 0;
+	long total = 0;
 
 	f = fopen("graphic.pdf", "rb");
 	if(!f)
@@ -150,34 +160,42 @@ void startc(int rsock, int wsock)
 	}
 	fclose(f);
 
-	while (cnt < FILESIZE) {
+	clock_gettime(CLOCK_REALTIME, &ts0);
+	for(int i=0; i<30; i++) {
+		cnt = 0;
+		wbuf = buf;
+		rbuf = buf;
+		while (cnt < FILESIZE) {
 
-		//memset(tmp, 0, size);
+			//memset(tmp, 0, size);
+			payload = PAYLOAD < FILESIZE - cnt ? PAYLOAD : FILESIZE - cnt;
+			write_all(wsock, payload);
+			//read_all(rsock, payload);
+			cnt += payload;
+			//long diff = ts1.tv_nsec - ts0.tv_nsec;
+			//rec[i] = diff > 0 ? diff : 1000000000 + diff; 
+			//printf("all %d lat %ld\n", all, ts1.tv_nsec - ts0.tv_nsec);
 
-		//clock_gettime(CLOCK_REALTIME, &ts0);
-		payload = PAYLOAD < FILESIZE - cnt ? PAYLOAD : FILESIZE - cnt;
-		write_all(wsock, payload);
-		read_all(rsock, payload);
-		cnt += payload;
-		//clock_gettime(CLOCK_REALTIME, &ts1);
-		//long diff = ts1.tv_nsec - ts0.tv_nsec;
-		//rec[i] = diff > 0 ? diff : 1000000000 + diff; 
-		//printf("all %d lat %ld\n", all, ts1.tv_nsec - ts0.tv_nsec);
+			//tmp[0] = 0x7b;
+			//write_all(writesock, tmp, all);
+			//read_all(readsock);
+			//if (tmp[0] != 0x7b)
+			//	error("Unknown error");
 
-		//tmp[0] = 0x7b;
-		//write_all(writesock, tmp, all);
-		//read_all(readsock);
-		//if (tmp[0] != 0x7b)
-		//	error("Unknown error");
-
-		//print_report_lat(all, t, rec);
+			//print_report_lat(all, t, rec);
+		}
+		total += cnt;
+		if(i%5 == 30)
+			printf("%d\n", i);
 	}
-	
+	clock_gettime(CLOCK_REALTIME, &ts1);
+	printf("%d %ld\n",(ts1.tv_sec - ts0.tv_sec), total );
+	printf("done\n");
 }
 
 int main(int argc, char *argv[]) {
-        if(argc < 4) {
-                fprintf(stderr,"usage %s <hostname> <-c/-s> <-p#>\n", argv[0]);
+        if(argc < 5) {
+                fprintf(stderr,"usage %s <hostname> <-c/-s> <-p#> <-l#>\n", argv[0]);
                 exit(0);
         }
 	
@@ -185,6 +203,7 @@ int main(int argc, char *argv[]) {
 	struct hostent *server = gethostbyname(argv[1]);
         char role = *(argv[2]+1);
 	int portno = atoi(argv[3]+2);
+	int last = atoi(argv[4]+2);
 
         switch(role) {
         case 'c':		
@@ -197,7 +216,7 @@ int main(int argc, char *argv[]) {
         case 's':
                 readsock = setuprecver( &listensock, portno );
                 writesock = setupsender( server, portno );
-		starts( readsock, writesock);
+		starts( readsock, writesock, last);
                 break;
         default:
                 break;

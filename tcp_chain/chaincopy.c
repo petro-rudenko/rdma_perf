@@ -18,6 +18,8 @@
 #define FILESIZE 102784090  
 #define PAYLOAD 1448*10
 
+#define h_addr h_addr_list[0] 
+
 char buf[FILESIZE];
 char *rbuf = buf;
 char *wbuf = buf;
@@ -122,7 +124,8 @@ void starts(int rsock, int wsock, int last)
 	struct timespec ts0, ts1;
 
 	clock_gettime(CLOCK_REALTIME, &ts0);
-	for(int i=0; i<30; i++) {
+	int i;
+	for(i=0; i<30; i++) {
 		cnt = 0; wbuf = buf; rbuf = buf;
 		while (cnt < FILESIZE) {
 			payload = PAYLOAD < FILESIZE - cnt ? PAYLOAD : FILESIZE - cnt;
@@ -165,7 +168,8 @@ void startc(int rsock, int wsock)
 	fclose(f);
 
 	clock_gettime(CLOCK_REALTIME, &ts0);
-	for(int i=0; i<30; i++) {
+	int i;
+	for(i=0; i<30; i++) {
 		cnt = 0;
 		wbuf = buf;
 		rbuf = buf;

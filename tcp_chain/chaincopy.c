@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <string.h> 
-#include <time.h>
+#include <sys/time.h>
 
 #include "statistics.h"
 
@@ -119,9 +119,12 @@ void starts(int rsock, int wsock, int last)
 {
 	FILE *f;
 	int payload, cnt = 0;
-	struct timespec ts0, ts1;
+	struct timeval           start, end;
 
-	clock_gettime(CLOCK_REALTIME, &ts0);
+        if (gettimeofday(&start, NULL)) {
+                perror("gettimeofday");
+        }
+
 	for(int i=0; i<30; i++) {
 		cnt = 0; wbuf = buf; rbuf = buf;
 		while (cnt < FILESIZE) {
@@ -136,8 +139,15 @@ void starts(int rsock, int wsock, int last)
 		if(i%10 == 0)
 			printf("%d\n", i);
 	}
-	clock_gettime(CLOCK_REALTIME, &ts1);
-	printf("%ld\n",(ts1.tv_sec - ts0.tv_sec) );
+
+        if (gettimeofday(&end, NULL)) {
+                perror("gettimeofday");
+        }
+
+       float usec = (end.tv_sec - start.tv_sec) * 1000000 +
+               (end.tv_usec - start.tv_usec);
+
+	printf("%f\n", usec );
 	/**
 	f = fopen("doc2", "wb");
         if(fwrite(buf, FILESIZE ,1,f) != 1) {
@@ -154,6 +164,7 @@ void startc(int rsock, int wsock)
 	struct timespec ts0, ts1;
 	int payload, cnt = 0;
 	long total = 0;
+	struct timeval           start, end;
 
 	f = fopen("graphic.pdf", "rb");
 	if(!f)
@@ -164,14 +175,16 @@ void startc(int rsock, int wsock)
 	}
 	fclose(f);
 
-	clock_gettime(CLOCK_REALTIME, &ts0);
+        if (gettimeofday(&start, NULL)) {
+                perror("gettimeofday");
+        }
+
 	for(int i=0; i<30; i++) {
 		cnt = 0;
 		wbuf = buf;
 		rbuf = buf;
 		while (cnt < FILESIZE) {
 
-			//memset(tmp, 0, size);
 			payload = PAYLOAD < FILESIZE - cnt ? PAYLOAD : FILESIZE - cnt;
 			write_all(wsock, payload);
 			//read_all(rsock, payload);
@@ -192,8 +205,13 @@ void startc(int rsock, int wsock)
 		if(i%5 == 0)
 			printf("%d\n", i);
 	}
-	clock_gettime(CLOCK_REALTIME, &ts1);
-	printf("%d %ld\n",(ts1.tv_sec - ts0.tv_sec), total );
+        if (gettimeofday(&end, NULL)) {
+                perror("gettimeofday");
+        }
+
+	float usec = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
+
+	printf("%f %d\n",usec, total );
 }
 
 int main(int argc, char *argv[]) {

@@ -28,7 +28,7 @@ void error(const char *msg)
     	exit(0);
 }
 
-void write_all(int wsock, int payload) {
+static inline void write_all(int wsock, int payload) {
 	int byte, cnt = 0;
 
 	while (cnt < payload) {
@@ -40,7 +40,7 @@ void write_all(int wsock, int payload) {
 	wbuf += payload;
 }
 
-void read_all(int rsock, int payload) {
+static inline void read_all(int rsock, int payload) {
 	int byte, cnt = 0;
 	setsockopt(rsock, IPPROTO_TCP, TCP_QUICKACK, (int[]){1}, sizeof(int));
         while (cnt < payload) {
@@ -119,7 +119,9 @@ void starts(int rsock, int wsock, int last)
 {
 	FILE *f;
 	int payload, cnt = 0;
+	struct timespec ts0, ts1;
 
+	clock_gettime(CLOCK_REALTIME, &ts0);
 	for(int i=0; i<30; i++) {
 		cnt = 0; wbuf = buf; rbuf = buf;
 		while (cnt < FILESIZE) {
@@ -131,9 +133,11 @@ void starts(int rsock, int wsock, int last)
 
 			cnt += payload;
 		}
-		if(i%5 == 0)
+		if(i%10 == 0)
 			printf("%d\n", i);
 	}
+	clock_gettime(CLOCK_REALTIME, &ts1);
+	printf("%ld\n",(ts1.tv_sec - ts0.tv_sec) );
 	/**
 	f = fopen("doc2", "wb");
         if(fwrite(buf, FILESIZE ,1,f) != 1) {
@@ -185,12 +189,11 @@ void startc(int rsock, int wsock)
 			//print_report_lat(all, t, rec);
 		}
 		total += cnt;
-		if(i%5 == 30)
+		if(i%5 == 0)
 			printf("%d\n", i);
 	}
 	clock_gettime(CLOCK_REALTIME, &ts1);
 	printf("%d %ld\n",(ts1.tv_sec - ts0.tv_sec), total );
-	printf("done\n");
 }
 
 int main(int argc, char *argv[]) {

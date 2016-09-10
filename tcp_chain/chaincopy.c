@@ -215,7 +215,7 @@ void startc(int rsock, int wsock)
 
 	float usec = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);
 
-	printf("%f %d\n",usec, total );
+	printf("%f %ld\n",usec, total );
 }
 
 int main(int argc, char *argv[]) {
